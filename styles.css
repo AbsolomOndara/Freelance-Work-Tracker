@@ -1479,3 +1479,294 @@ button, input, select {
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #5a6fd8, #6a4190);
 }
+/* ===== Employer Management & Export Styles ===== */
+.category-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.category-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.category-section h3 {
+    color: #4a5568;
+    font-size: 1.3rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.export-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.export-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.export-btn.submitted {
+    background: linear-gradient(135deg, #ed8936, #dd6b20);
+}
+
+.export-btn.completed {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+}
+
+.orders-list {
+    display: grid;
+    gap: 15px;
+}
+
+/* Employer select dropdown */
+#employerSelect {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.9rem;
+}
+
+/* ===== Enhanced Order Cards ===== */
+.order-card .order-category.others {
+    color: #9f7aea;
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 768px) {
+    .category-section .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .export-buttons {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    #employerNameGroup div {
+        flex-direction: column;
+    }
+    
+    #employerSelect {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* ===== Animation Enhancements ===== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.category-section {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* ===== Button States ===== */
+.export-btn i {
+    font-size: 0.9rem;
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+/* ===== Empty State Enhancement ===== */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+    grid-column: 1 / -1;
+}
+
+.empty-state i {
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+    opacity: 0.7;
+    color: #667eea;
+}
+
+.empty-state h3 {
+    color: #4a5568;
+    margin-bottom: 10px;
+    font-size: 1.4rem;
+}
+
+.empty-state p {
+    max-width: 400px;
+    margin: 0 auto;
+}
+/* Order Status Toggle */
+.status-toggle {
+    display: flex;
+    background: #e2e8f0;
+    border-radius: 25px;
+    padding: 4px;
+    gap: 2px;
+}
+
+.status-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: transparent;
+    color: #718096;
+}
+
+.status-btn.active {
+    background: white;
+    color: #2d3748;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: #4a5568;
+}
+
+.order-count {
+    font-size: 0.9rem;
+    color: #718096;
+    font-weight: normal;
+}
+
+.section-total {
+    margin-left: auto;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+/* Export Buttons */
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.export-btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.export-btn:not(.disabled) {
+    background: #667eea;
+    color: white;
+}
+
+.export-btn.disabled {
+    background: #e2e8f0;
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.export-btn.submitted:not(.disabled) {
+    background: #ed8936;
+}
+
+.export-btn.completed:not(.disabled) {
+    background: #48bb78;
+}
+
+.export-btn:not(.disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.delete-employer-btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #e53e3e;
+    color: white;
+    border: none;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.delete-employer-btn:hover {
+    background: #c53030;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(229, 62, 62, 0.2);
+}
