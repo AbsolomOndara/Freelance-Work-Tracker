@@ -667,3 +667,10 @@ setInterval(() => {
         tracker.saveOrders();
     }
 }, 30000);
+// Ensure Font Awesome is loaded for WhatsApp icon
+if (!document.querySelector('link[href*="font-awesome"]')) {
+    const faLink = document.createElement('link');
+    faLink.rel = 'stylesheet';
+    faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+    document.head.appendChild(faLink);
+}
