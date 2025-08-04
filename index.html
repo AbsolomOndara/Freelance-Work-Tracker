@@ -83,6 +83,50 @@
                 </div>
             </div>
         </section>
+        <div id="financialSummaryContainer" class="financial-summary-section"></div>
+        <div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Payment Details</h2>
+        <p>For: <span id="paymentOrderTitle"></span></p>
+        
+        <form id="paymentForm">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isPaid" name="isPaid">
+                    <span id="paidStatusText">Unpaid</span>
+                </label>
+            </div>
+            
+            <div id="paymentDetails" style="display: none;">
+                <div class="form-group">
+                    <label for="datePaid">Date Paid</label>
+                    <input type="date" id="datePaid" name="datePaid">
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenseCategory">Category</label>
+                    <select id="expenseCategory" name="expenseCategory" required>
+                        <option value="">Select category</option>
+                        <option value="savings">Savings</option>
+                        <option value="rent">Rent</option>
+                        <option value="wifi">Wifi</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="shopping">Shopping</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="paymentNotes">Notes</label>
+                    <textarea id="paymentNotes" name="paymentNotes" rows="3"></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Save Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
 
         <!-- Add Order Form -->
         <section class="add-order-section">
@@ -176,6 +220,54 @@
                 </div>
             </div>
         </section>
+        <div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Record Payment for <span id="paymentOrderTitle"></span></h3>
+        <form id="paymentForm">
+            <div class="form-group">
+                <label>Payment Status</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="isPaid">
+                    <label for="isPaid" class="toggle-label">
+                        <span class="toggle-handle"></span>
+                    </label>
+                    <span id="paidStatusText">Unpaid</span>
+                </div>
+            </div>
+            
+            <div id="paymentDetails" style="display: none;">
+                <div class="form-group">
+                    <label for="datePaid">Date Paid</label>
+                    <input type="date" id="datePaid" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenseCategory">Used For</label>
+                    <select id="expenseCategory" required>
+                        <option value="">Select category</option>
+                        <option value="savings">Savings</option>
+                        <option value="rent">Rent</option>
+                        <option value="wifi">WiFi</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="shopping">Shopping</option>
+                        <option value="investment">Investment</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="paymentNotes">Notes</label>
+                    <textarea id="paymentNotes" rows="3" placeholder="Additional details"></textarea>
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn">
+                Save Payment Details
+            </button>
+        </form>
+    </div>
+</div>
 
         <!-- Monthly Expenses Breakdown -->
         <section class="expenses-section">
@@ -235,6 +327,7 @@
                 </div>
             </div>
         </section>
+        
     </div>
     <footer class="footer">
     <div class="footer-content">

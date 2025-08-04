@@ -7,6 +7,8 @@ class FreelanceTracker {
         this.savingsGoal = 10000;
         this.targetIncome = this.monthlyExpenses + this.savingsGoal;
         this.currentFilter = 'all';
+        this.paymentCategories = ['savings', 'rent', 'wifi', 'utilities', 'shopping', 'other'];
+        this.financialSummary = this.calculateFinancialSummary();
         
         this.init();
     }
@@ -15,6 +17,7 @@ class FreelanceTracker {
         this.setupEventListeners();
         this.updateCurrentMonth();
         this.updateFinancialOverview();
+        this.updateFinancialSummary();
         this.renderOrders();
     }
 
@@ -64,6 +67,37 @@ class FreelanceTracker {
         // Set today's date as default
         document.getElementById('dateAssigned').valueAsDate = new Date();
 
+        // Payment modal toggle
+        document.querySelector('.close-modal').addEventListener('click', () => {
+            document.getElementById('paymentModal').style.display = 'none';
+        });
+
+        // Payment status toggle
+        document.getElementById('isPaid').addEventListener('change', (e) => {
+            const paymentDetails = document.getElementById('paymentDetails');
+            const statusText = document.getElementById('paidStatusText');
+            if (e.target.checked) {
+                paymentDetails.style.display = 'block';
+                statusText.textContent = 'Paid';
+            } else {
+                paymentDetails.style.display = 'none';
+                statusText.textContent = 'Unpaid';
+            }
+        });
+
+        // Payment form submission
+        document.getElementById('paymentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.savePaymentDetails();
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('paymentModal')) {
+                document.getElementById('paymentModal').style.display = 'none';
+            }
+        });
+
         // Event delegation for dynamic elements
         document.addEventListener('click', (e) => {
             // Status buttons
@@ -95,7 +129,66 @@ class FreelanceTracker {
                 const employerName = btn.dataset.employer;
                 this.deleteEmployer(employerName);
             }
+
+            // Payment buttons
+            if (e.target.closest('.payment-btn')) {
+                const btn = e.target.closest('.payment-btn');
+                const orderId = btn.dataset.orderId;
+                this.showPaymentModal(orderId);
+            }
         });
+    }
+
+    calculateFinancialSummary() {
+        const summary = {
+            savings: 0,
+            rent: 0,
+            wifi: 0,
+            utilities: 0,
+            shopping: 0,
+            other: 0,
+            totalPaid: 0
+        };
+
+        this.orders.forEach(order => {
+            if (order.payment?.isPaid && order.payment.expenseCategory) {
+                const category = order.payment.expenseCategory;
+                if (this.paymentCategories.includes(category)) {
+                    summary[category] += order.amount;
+                    summary.totalPaid += order.amount;
+                }
+            }
+        });
+
+        return summary;
+    }
+
+    updateFinancialSummary() {
+        this.financialSummary = this.calculateFinancialSummary();
+        this.renderFinancialSummary();
+    }
+
+    renderFinancialSummary() {
+        const container = document.getElementById('financialSummaryContainer');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="financial-summary-card">
+                <h3>Financial Summary</h3>
+                <div class="financial-categories">
+                    ${this.paymentCategories.map(category => `
+                        <div class="financial-category ${category}">
+                            <div class="category-name">${category.charAt(0).toUpperCase() + category.slice(1)}</div>
+                            <div class="category-amount">KSh ${this.financialSummary[category].toLocaleString()}</div>
+                        </div>
+                    `).join('')}
+                    <div class="financial-total">
+                        <div class="total-name">Total Paid</div>
+                        <div class="total-amount">KSh ${this.financialSummary.totalPaid.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     populateEmployerSelect() {
@@ -152,7 +245,13 @@ class FreelanceTracker {
             pages: parseInt(document.getElementById('numPages').value),
             amount: parseFloat(document.getElementById('valueAmount').value),
             status: 'active',
-            dateCreated: new Date().toISOString()
+            dateCreated: new Date().toISOString(),
+            payment: {
+                isPaid: false,
+                datePaid: null,
+                expenseCategory: null,
+                notes: null
+            }
         };
 
         this.orders.push(formData);
@@ -161,6 +260,52 @@ class FreelanceTracker {
         this.renderOrders();
         this.resetForm();
         this.showNotification('Order added successfully!', 'success');
+    }
+
+    showPaymentModal(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) return;
+
+        const modal = document.getElementById('paymentModal');
+        document.getElementById('paymentOrderTitle').textContent = order.title;
+        
+        // Set current values
+        const payment = order.payment || {};
+        document.getElementById('isPaid').checked = payment.isPaid || false;
+        document.getElementById('datePaid').value = payment.datePaid || '';
+        document.getElementById('expenseCategory').value = payment.expenseCategory || '';
+        document.getElementById('paymentNotes').value = payment.notes || '';
+        
+        // Trigger change event to show/hide details
+        document.getElementById('isPaid').dispatchEvent(new Event('change'));
+        
+        modal.style.display = 'block';
+    }
+
+    savePaymentDetails() {
+        const orderTitle = document.getElementById('paymentOrderTitle').textContent;
+        const order = this.orders.find(o => o.title === orderTitle);
+        if (!order) return;
+
+        const wasPaid = order.payment?.isPaid || false;
+        const previousCategory = order.payment?.expenseCategory || null;
+
+        order.payment = {
+            isPaid: document.getElementById('isPaid').checked,
+            datePaid: document.getElementById('datePaid').value,
+            expenseCategory: document.getElementById('expenseCategory').value,
+            notes: document.getElementById('paymentNotes').value
+        };
+
+        this.saveOrders();
+        this.renderOrders();
+        document.getElementById('paymentModal').style.display = 'none';
+        this.showNotification('Payment details saved!', 'success');
+
+        // Update financial summary if payment status or category changed
+        if (wasPaid !== order.payment.isPaid || previousCategory !== order.payment.expenseCategory) {
+            this.updateFinancialSummary();
+        }
     }
 
     deleteEmployer(employerName) {
@@ -172,6 +317,7 @@ class FreelanceTracker {
             this.saveOrders();
             this.saveEmployers();
             this.renderOrders();
+            this.updateFinancialSummary();
             this.showNotification(`${employerName} deleted!`, 'success');
         }
     }
@@ -187,11 +333,22 @@ class FreelanceTracker {
     }
 
     deleteOrder(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) return;
+
         if (confirm('Are you sure you want to delete this order?')) {
+            const wasPaid = order.payment?.isPaid || false;
+            
             this.orders = this.orders.filter(o => o.id !== orderId);
             this.saveOrders();
             this.updateFinancialOverview();
             this.renderOrders();
+            
+            // Update financial summary if the deleted order was paid
+            if (wasPaid) {
+                this.updateFinancialSummary();
+            }
+            
             this.showNotification('Order deleted successfully!', 'success');
         }
     }
@@ -337,12 +494,18 @@ class FreelanceTracker {
             day: 'numeric'
         });
 
+        // Add payment status to order header
+        const paymentStatus = order.payment?.isPaid ? 
+            `<span class="payment-badge paid">Paid - ${order.payment.expenseCategory}</span>` : 
+            `<span class="payment-badge unpaid">Unpaid</span>`;
+
         card.innerHTML = `
             <div class="order-header">
                 <div>
                     <div class="order-title">${order.title}</div>
                     <div class="order-category ${order.category}">${categoryDisplay}</div>
                 </div>
+                ${paymentStatus}
             </div>
             
             <div class="order-details">
@@ -382,6 +545,9 @@ class FreelanceTracker {
                         Completed
                     </button>
                 </div>
+                <button class="payment-btn" data-order-id="${order.id}">
+                    <i class="fas fa-money-bill-wave"></i> Payment
+                </button>
                 <button class="delete-btn" data-order-id="${order.id}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -415,12 +581,14 @@ class FreelanceTracker {
                 new Date(order.dateAssigned).toLocaleDateString(),
                 order.pages,
                 `KSh ${order.amount.toLocaleString()}`,
-                order.status.toUpperCase()
+                order.status.toUpperCase(),
+                order.payment?.isPaid ? 'Yes' : 'No',
+                order.payment?.expenseCategory || ''
             ]);
             
             // Generate table
             doc.autoTable({
-                head: [['Title', 'Date', 'Pages', 'Amount', 'Status']],
+                head: [['Title', 'Date', 'Pages', 'Amount', 'Status', 'Paid', 'Expense Category']],
                 body: tableData,
                 startY: 35,
                 theme: 'grid',
@@ -536,6 +704,7 @@ class FreelanceTracker {
             this.saveOrders();
             this.saveEmployers();
             this.updateFinancialOverview();
+            this.updateFinancialSummary();
             this.renderOrders();
             this.showNotification('All data cleared!', 'success');
         }
@@ -576,6 +745,7 @@ class FreelanceTracker {
                                 this.saveOrders();
                                 this.saveEmployers();
                                 this.updateFinancialOverview();
+                                this.updateFinancialSummary();
                                 this.renderOrders();
                                 this.showNotification('Data restored!', 'success');
                             }
@@ -614,7 +784,13 @@ function addSampleData() {
             pages: 5,
             amount: 2500,
             status: 'completed',
-            dateCreated: new Date('2024-08-01').toISOString()
+            dateCreated: new Date('2024-08-01').toISOString(),
+            payment: {
+                isPaid: true,
+                datePaid: '2024-08-10',
+                expenseCategory: 'savings',
+                notes: 'Paid via M-Pesa'
+            }
         },
         {
             id: '2',
@@ -625,7 +801,13 @@ function addSampleData() {
             pages: 8,
             amount: 4000,
             status: 'submitted',
-            dateCreated: new Date('2024-08-02').toISOString()
+            dateCreated: new Date('2024-08-02').toISOString(),
+            payment: {
+                isPaid: true,
+                datePaid: '2024-08-12',
+                expenseCategory: 'rent',
+                notes: 'Paid via bank transfer'
+            }
         },
         {
             id: '3',
@@ -636,13 +818,20 @@ function addSampleData() {
             pages: 3,
             amount: 1500,
             status: 'active',
-            dateCreated: new Date('2024-08-03').toISOString()
+            dateCreated: new Date('2024-08-03').toISOString(),
+            payment: {
+                isPaid: false,
+                datePaid: null,
+                expenseCategory: null,
+                notes: null
+            }
         }
     ];
     
     tracker.orders = sampleOrders;
     tracker.saveOrders();
     tracker.updateFinancialOverview();
+    tracker.updateFinancialSummary();
     tracker.renderOrders();
 }
 
