@@ -25,7 +25,52 @@
         </header>
 
         <!-- Financial Overview -->
-        <section class="financial-overview">
+        
+        <div id="financialSummaryContainer" class="financial-summary-section"></div>
+        <div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Payment Details</h2>
+        <p>For: <span id="paymentOrderTitle"></span></p>
+        
+        <form id="paymentForm">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isPaid" name="isPaid">
+                    <span id="paidStatusText">Unpaid</span>
+                </label>
+            </div>
+            
+            <div id="paymentDetails" style="display: none;">
+                <div class="form-group">
+                    <label for="datePaid">Date Paid</label>
+                    <input type="date" id="datePaid" name="datePaid">
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenseCategory">Category</label>
+                    <select id="expenseCategory" name="expenseCategory" required>
+                        <option value="">Select category</option>
+                        <option value="savings">Savings</option>
+                        <option value="rent">Rent</option>
+                        <option value="wifi">Wifi</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="shopping">Shopping</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="paymentNotes">Notes</label>
+                    <textarea id="paymentNotes" name="paymentNotes" rows="3"></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Save Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+<section class="financial-overview">
             <div class="overview-grid">
                 <div class="overview-card active-orders">
                     <div class="card-icon">
@@ -83,51 +128,6 @@
                 </div>
             </div>
         </section>
-        <div id="financialSummaryContainer" class="financial-summary-section"></div>
-        <div id="paymentModal" class="modal">
-    <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Payment Details</h2>
-        <p>For: <span id="paymentOrderTitle"></span></p>
-        
-        <form id="paymentForm">
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="isPaid" name="isPaid">
-                    <span id="paidStatusText">Unpaid</span>
-                </label>
-            </div>
-            
-            <div id="paymentDetails" style="display: none;">
-                <div class="form-group">
-                    <label for="datePaid">Date Paid</label>
-                    <input type="date" id="datePaid" name="datePaid">
-                </div>
-                
-                <div class="form-group">
-                    <label for="expenseCategory">Category</label>
-                    <select id="expenseCategory" name="expenseCategory" required>
-                        <option value="">Select category</option>
-                        <option value="savings">Savings</option>
-                        <option value="rent">Rent</option>
-                        <option value="wifi">Wifi</option>
-                        <option value="utilities">Utilities</option>
-                        <option value="shopping">Shopping</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="paymentNotes">Notes</label>
-                    <textarea id="paymentNotes" name="paymentNotes" rows="3"></textarea>
-                </div>
-                
-                <button type="submit" class="btn">Save Payment</button>
-            </div>
-        </form>
-    </div>
-</div>
-
         <!-- Add Order Form -->
         <section class="add-order-section">
             <div class="section-header">
