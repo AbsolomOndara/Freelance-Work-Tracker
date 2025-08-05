@@ -10,6 +10,9 @@ class FreelanceTracker {
         this.paymentCategories = ['savings', 'rent', 'wifi', 'utilities', 'shopping', 'other'];
         this.financialSummary = this.calculateFinancialSummary();
         
+        // Track collapsed sections
+        this.collapsedSections = this.loadCollapsedSections() || {};
+        
         this.init();
     }
 
@@ -136,7 +139,55 @@ class FreelanceTracker {
                 const orderId = btn.dataset.orderId;
                 this.showPaymentModal(orderId);
             }
+
+            // Section collapse toggle buttons
+            if (e.target.closest('.section-toggle-btn')) {
+                const btn = e.target.closest('.section-toggle-btn');
+                const sectionId = btn.dataset.sectionId;
+                this.toggleSectionCollapse(sectionId);
+            }
         });
+    }
+
+    // New method to handle section collapse/expand
+    toggleSectionCollapse(sectionId) {
+        const section = document.querySelector(`[data-section-id="${sectionId}"]`);
+        const ordersList = section.querySelector('.orders-list');
+        const toggleIcon = section.querySelector('.section-toggle-btn i');
+        
+        if (this.collapsedSections[sectionId]) {
+            // Expand section
+            ordersList.style.display = 'grid';
+            toggleIcon.style.transform = 'rotate(0deg)';
+            this.collapsedSections[sectionId] = false;
+        } else {
+            // Collapse section
+            ordersList.style.display = 'none';
+            toggleIcon.style.transform = 'rotate(-90deg)';
+            this.collapsedSections[sectionId] = true;
+        }
+        
+        this.saveCollapsedSections();
+    }
+
+    // Save collapsed sections state
+    saveCollapsedSections() {
+        try {
+            localStorage.setItem('freelanceCollapsedSections', JSON.stringify(this.collapsedSections));
+        } catch (error) {
+            console.error('Error saving collapsed sections:', error);
+        }
+    }
+
+    // Load collapsed sections state
+    loadCollapsedSections() {
+        try {
+            const collapsed = localStorage.getItem('freelanceCollapsedSections');
+            return collapsed ? JSON.parse(collapsed) : {};
+        } catch (error) {
+            console.error('Error loading collapsed sections:', error);
+            return {};
+        }
     }
 
     calculateFinancialSummary() {
@@ -383,21 +434,21 @@ class FreelanceTracker {
         // 1. Writers Admin Section
         const writersAdminOrders = this.filterOrders('writers-admin');
         if (writersAdminOrders.length > 0) {
-            container.appendChild(this.createCategorySection('Writers Admin', writersAdminOrders));
+            container.appendChild(this.createCategorySection('Writers Admin', writersAdminOrders, false, 'writers-admin'));
         }
 
         // 2. Employers Section (sorted alphabetically)
         [...this.employers].sort().forEach(employer => {
             const employerOrders = this.filterOrders('employer', employer);
             if (employerOrders.length > 0) {
-                container.appendChild(this.createCategorySection(employer, employerOrders, true));
+                container.appendChild(this.createCategorySection(employer, employerOrders, true, `employer-${employer}`));
             }
         });
 
         // 3. Others Section
         const otherOrders = this.filterOrders('others');
         if (otherOrders.length > 0) {
-            container.appendChild(this.createCategorySection('Others', otherOrders));
+            container.appendChild(this.createCategorySection('Others', otherOrders, false, 'others'));
         }
 
         // Show empty state if no orders
@@ -422,9 +473,10 @@ class FreelanceTracker {
         }
     }
 
-    createCategorySection(title, orders, isEmployer = false) {
+    createCategorySection(title, orders, isEmployer = false, sectionId = '') {
         const section = document.createElement('div');
         section.className = 'category-section';
+        section.setAttribute('data-section-id', sectionId);
         
         // Calculate counts and totals
         const statusCounts = {
@@ -434,11 +486,20 @@ class FreelanceTracker {
         };
         const totalAmount = orders.reduce((sum, order) => sum + order.amount, 0);
 
+        // Check if section should be collapsed
+        const isCollapsed = this.collapsedSections[sectionId] || false;
+        const chevronRotation = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+
         // Create section header
         const header = document.createElement('div');
         header.className = 'section-header';
         header.innerHTML = `
-            <h3>${title} <span class="order-count">(${orders.length} orders)</span></h3>
+            <div class="section-title-group">
+                <button class="section-toggle-btn" data-section-id="${sectionId}">
+                    <i class="fas fa-chevron-down" style="transform: ${chevronRotation}; transition: transform 0.3s ease;"></i>
+                </button>
+                <h3>${title} <span class="order-count">(${orders.length} orders)</span></h3>
+            </div>
             <div class="section-total">Total: KSh ${totalAmount.toLocaleString()}</div>
             <div class="export-buttons">
                 <button class="export-btn ${statusCounts.active ? '' : 'disabled'}" 
@@ -466,6 +527,11 @@ class FreelanceTracker {
         // Create orders list
         const ordersList = document.createElement('div');
         ordersList.className = 'orders-list';
+        
+        // Apply collapsed state
+        if (isCollapsed) {
+            ordersList.style.display = 'none';
+        }
 
         // Sort orders by date (newest first) and add to list
         orders.sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated))
@@ -701,8 +767,10 @@ class FreelanceTracker {
         if (confirm('Delete ALL orders and employers? This cannot be undone!')) {
             this.orders = [];
             this.employers = ['Joe Mac', 'Brian Oyaro'];
+            this.collapsedSections = {};
             this.saveOrders();
             this.saveEmployers();
+            this.saveCollapsedSections();
             this.updateFinancialOverview();
             this.updateFinancialSummary();
             this.renderOrders();
@@ -714,6 +782,7 @@ class FreelanceTracker {
         const backup = {
             orders: this.orders,
             employers: this.employers,
+            collapsedSections: this.collapsedSections,
             exportDate: new Date().toISOString()
         };
         
@@ -742,8 +811,10 @@ class FreelanceTracker {
                             if (confirm('This will replace all current data. Continue?')) {
                                 this.orders = backup.orders;
                                 this.employers = backup.employers;
+                                this.collapsedSections = backup.collapsedSections || {};
                                 this.saveOrders();
                                 this.saveEmployers();
+                                this.saveCollapsedSections();
                                 this.updateFinancialOverview();
                                 this.updateFinancialSummary();
                                 this.renderOrders();
@@ -856,6 +927,7 @@ setInterval(() => {
         tracker.saveOrders();
     }
 }, 30000);
+
 // Ensure Font Awesome is loaded for WhatsApp icon
 if (!document.querySelector('link[href*="font-awesome"]')) {
     const faLink = document.createElement('link');
