@@ -842,6 +842,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tracker.orders.length === 0 && !localStorage.getItem('freelanceOrders')) {
         addSampleData();
     }
+
+    // Add event listener for the analysis button
+    document.getElementById('analyzeFinanceBtn').addEventListener('click', function() {
+        tracker.analyzeFinances();
+    });
 });
 
 function addSampleData() {
@@ -906,6 +911,333 @@ function addSampleData() {
     tracker.renderOrders();
 }
 
+// Add these methods to your FreelanceTracker class
+FreelanceTracker.prototype.analyzeFinances = function() {
+    // Calculate total income from paid orders
+    const paidOrders = this.orders.filter(order => order.payment?.isPaid);
+    const totalIncome = paidOrders.reduce((sum, order) => sum + order.amount, 0);
+
+    // Calculate category totals
+    const categoryTotals = {};
+    this.paymentCategories.forEach(category => {
+        categoryTotals[category] = paidOrders
+            .filter(order => order.payment.expenseCategory === category)
+            .reduce((sum, order) => sum + order.amount, 0);
+    });
+
+    // Generate monthly data for line chart
+    const monthlyData = this.generateMonthlyData(paidOrders);
+
+    // Generate recommendations
+    const recommendations = this.generateRecommendations(categoryTotals, totalIncome);
+
+    // Show the analysis modal
+    this.showFinancialAnalysis(monthlyData, recommendations, totalIncome);
+};
+
+FreelanceTracker.prototype.generateMonthlyData = function(paidOrders) {
+    const monthlyData = {};
+
+    paidOrders.forEach(order => {
+        const date = new Date(order.payment.datePaid);
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {
+                income: 0,
+                expenses: {}
+            };
+            this.paymentCategories.forEach(category => {
+                monthlyData[monthYear].expenses[category] = 0;
+            });
+        }
+        
+        monthlyData[monthYear].income += order.amount;
+        
+        const category = order.payment.expenseCategory;
+        if (category) {
+            monthlyData[monthYear].expenses[category] += order.amount;
+        }
+    });
+
+    // Sort months chronologically
+    const sortedMonths = Object.keys(monthlyData).sort();
+    
+    // Prepare data for Chart.js
+    const labels = sortedMonths;
+    const incomeData = sortedMonths.map(month => monthlyData[month].income);
+    
+    const expenseDatasets = this.paymentCategories.map(category => {
+        return {
+            label: category.charAt(0).toUpperCase() + category.slice(1),
+            data: sortedMonths.map(month => monthlyData[month].expenses[category]),
+            borderColor: this.getCategoryColor(category),
+            backgroundColor: 'rgba(0, 0, 0, 0)',
+            tension: 0.3
+        };
+    });
+
+    return {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Income',
+                data: incomeData,
+                borderColor: '#2ecc71',
+                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                tension: 0.3,
+                fill: true
+            },
+            ...expenseDatasets
+        ]
+    };
+};
+
+FreelanceTracker.prototype.getCategoryColor = function(category) {
+    const colors = {
+        savings: '#2ecc71',
+        rent: '#e74c3c',
+        wifi: '#3498db',
+        utilities: '#f39c12',
+        shopping: '#9b59b6',
+        other: '#7f8c8d'
+    };
+    return colors[category] || '#95a5a6';
+};
+
+FreelanceTracker.prototype.generateRecommendations = function(categoryTotals, totalIncome) {
+    const recommendations = [];
+    
+    // Savings recommendation (ideal: 20% of income)
+    const savingsPct = totalIncome > 0 ? (categoryTotals.savings / totalIncome * 100) : 0;
+    if (savingsPct < 15) {
+        recommendations.push({
+            category: 'savings',
+            message: `Your savings (${savingsPct.toFixed(1)}%) are below the recommended 20%. Try to save more each month.`,
+            type: 'warning'
+        });
+    } else {
+        recommendations.push({
+            category: 'savings',
+            message: `Good job! You're saving ${savingsPct.toFixed(1)}% of your income.`,
+            type: 'good'
+        });
+    }
+
+    // Rent recommendation (ideal: <30% of income)
+    const rentPct = totalIncome > 0 ? (categoryTotals.rent / totalIncome * 100) : 0;
+    if (rentPct > 35) {
+        recommendations.push({
+            category: 'rent',
+            message: `Your rent (${rentPct.toFixed(1)}%) is high compared to your income. Consider more affordable options.`,
+            type: 'warning'
+        });
+    } else if (rentPct > 0) {
+        recommendations.push({
+            category: 'rent',
+            message: `Your rent (${rentPct.toFixed(1)}%) is within reasonable limits.`,
+            type: 'good'
+        });
+    }
+
+    return recommendations;
+};
+
+// Add to your existing FreelanceTracker class
+FreelanceTracker.prototype.analyzeFinances = function() {
+    // Get all paid orders
+    const paidOrders = this.orders.filter(order => order.payment?.isPaid);
+    
+    // Calculate total income
+    const totalIncome = paidOrders.reduce((sum, order) => sum + order.amount, 0);
+    
+    // Calculate category totals
+    const categoryTotals = {};
+    this.paymentCategories.forEach(category => {
+        categoryTotals[category] = paidOrders
+            .filter(order => order.payment.expenseCategory === category)
+            .reduce((sum, order) => sum + order.amount, 0);
+    });
+
+    // Generate monthly data for the chart
+    const monthlyData = {};
+    paidOrders.forEach(order => {
+        const date = new Date(order.payment.datePaid);
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {
+                income: 0,
+                expenses: {}
+            };
+            this.paymentCategories.forEach(category => {
+                monthlyData[monthYear].expenses[category] = 0;
+            });
+        }
+        
+        monthlyData[monthYear].income += order.amount;
+        
+        const category = order.payment.expenseCategory;
+        if (category) {
+            monthlyData[monthYear].expenses[category] += order.amount;
+        }
+    });
+
+    // Prepare chart data
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const chartData = {
+        labels: sortedMonths,
+        datasets: [
+            {
+                label: 'Income',
+                data: sortedMonths.map(month => monthlyData[month].income),
+                borderColor: '#2ecc71',
+                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                tension: 0.3,
+                fill: true
+            },
+            ...this.paymentCategories.map(category => ({
+                label: category.charAt(0).toUpperCase() + category.slice(1),
+                data: sortedMonths.map(month => monthlyData[month].expenses[category]),
+                borderColor: this.getCategoryColor(category),
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                tension: 0.3
+            }))
+        ]
+    };
+
+    // Generate recommendations
+    const recommendations = [];
+    this.paymentCategories.forEach(category => {
+        const percentage = totalIncome > 0 ? (categoryTotals[category] / totalIncome * 100) : 0;
+        
+        if (category === 'savings' && percentage < 15) {
+            recommendations.push({
+                category: category,
+                message: `Your savings (${percentage.toFixed(1)}%) are below the recommended 20%`,
+                type: 'warning'
+            });
+        }
+        else if (category === 'rent' && percentage > 35) {
+            recommendations.push({
+                category: category,
+                message: `Your rent (${percentage.toFixed(1)}%) is high compared to income`,
+                type: 'warning'
+            });
+        }
+    });
+
+    // Show the modal
+    this.showFinancialAnalysis(chartData, recommendations, totalIncome);
+};
+
+FreelanceTracker.prototype.getCategoryColor = function(category) {
+    const colors = {
+        savings: '#2ecc71',
+        rent: '#e74c3c',
+        wifi: '#3498db',
+        utilities: '#f39c12',
+        shopping: '#9b59b6',
+        other: '#7f8c8d'
+    };
+    return colors[category] || '#95a5a6';
+};
+
+FreelanceTracker.prototype.showFinancialAnalysis = function(chartData, recommendations, totalIncome) {
+    // Create or reuse modal
+    let modal = document.querySelector('.analysis-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'analysis-modal';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="analysis-content">
+            <div class="analysis-header">
+                <h3><i class="fas fa-chart-line"></i> Financial Analysis</h3>
+                <button class="close-analysis">&times;</button>
+            </div>
+            <div class="financial-summary">
+                <div class="summary-item">
+                    <span>Total Income</span>
+                    <strong>KSh ${totalIncome.toLocaleString()}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Total Expenses</span>
+                    <strong>KSh ${Object.values(chartData.datasets.slice(1)).reduce((sum, dataset) => 
+                        sum + dataset.data.reduce((s, v) => s + v, 0), 0).toLocaleString()}</strong>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="financeChart"></canvas>
+            </div>
+            <div class="recommendations">
+                <h4>Recommendations</h4>
+                ${recommendations.length > 0 ? 
+                    recommendations.map(rec => `
+                        <div class="recommendation-item ${rec.type}">
+                            <strong>${rec.category.charAt(0).toUpperCase() + rec.category.slice(1)}:</strong>
+                            ${rec.message}
+                        </div>
+                    `).join('') 
+                    : '<div class="recommendation-item good">Your finances look well balanced!</div>'
+                }
+            </div>
+        </div>
+    `;
+
+    // Show modal
+    modal.classList.add('active');
+
+    // Initialize chart
+    const ctx = modal.querySelector('#financeChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: KSh ${context.raw.toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'KSh ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Close modal when clicking X
+    modal.querySelector('.close-analysis').addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+};
+//
+
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -935,3 +1267,4 @@ if (!document.querySelector('link[href*="font-awesome"]')) {
     faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
     document.head.appendChild(faLink);
 }
+// button for financial analysis

@@ -2786,3 +2786,103 @@ button, input, select {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
+
+
+/*====== this is the css code for the button for financial analysis========*/
+/* Financial Analysis Modal Styles */
+.analysis-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.analysis-modal.active {
+    display: flex;
+}
+
+.analysis-content {
+    background: white;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 800px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.close-analysis {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #7f8c8d;
+}
+
+.close-analysis:hover {
+    color: #e74c3c;
+}
+
+.chart-container {
+    width: 100%;
+    height: 400px;
+    margin: 20px 0;
+}
+
+.recommendations {
+    margin-top: 20px;
+}
+
+.recommendation-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background: #f8f9fa;
+    border-left: 4px solid #3498db;
+}
+
+.recommendation-item.warning {
+    border-left-color: #e74c3c;
+    background: #fdecea;
+}
+
+.recommendation-item.good {
+    border-left-color: #2ecc71;
+    background: #e8f8f0;
+}
+
+.financial-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.summary-item {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+    flex: 1;
+    margin: 0 5px;
+}
+
+.summary-item span {
+    display: block;
+    color: #7f8c8d;
+    font-size: 14px;
+}
+
+.summary-item strong {
+    display: block;
+    font-size: 18px;
+    margin-top: 5px;
+    color: #2c3e50;
+}
