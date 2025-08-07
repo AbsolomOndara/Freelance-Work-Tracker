@@ -99,6 +99,9 @@ class FreelanceTracker {
             if (e.target === document.getElementById('paymentModal')) {
                 document.getElementById('paymentModal').style.display = 'none';
             }
+            if (e.target === document.getElementById('editModal')) {
+                document.getElementById('editModal').style.display = 'none';
+            }
         });
 
         // Event delegation for dynamic elements
@@ -140,6 +143,13 @@ class FreelanceTracker {
                 this.showPaymentModal(orderId);
             }
 
+            // Edit buttons
+            if (e.target.closest('.edit-btn')) {
+                const btn = e.target.closest('.edit-btn');
+                const orderId = btn.dataset.orderId;
+                this.showEditModal(orderId);
+            }
+
             // Section collapse toggle buttons
             if (e.target.closest('.section-toggle-btn')) {
                 const btn = e.target.closest('.section-toggle-btn');
@@ -147,6 +157,133 @@ class FreelanceTracker {
                 this.toggleSectionCollapse(sectionId);
             }
         });
+    }
+
+    showEditModal(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) return;
+
+        // Create or get modal
+        let modal = document.getElementById('editModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'editModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="close-edit-modal">&times;</span>
+                    <h3>Edit Order</h3>
+                    <form id="editOrderForm">
+                        <input type="hidden" id="editOrderId">
+                        <div class="form-group">
+                            <label for="editOrderTitle">Title</label>
+                            <input type="text" id="editOrderTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editWorkCategory">Category</label>
+                            <select id="editWorkCategory" required>
+                                <option value="writers-admin">Writers Admin</option>
+                                <option value="employer">Employer</option>
+                                <option value="others">Others</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="editEmployerNameGroup" style="display: none;">
+                            <label for="editEmployerName">Employer Name</label>
+                            <input type="text" id="editEmployerName">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDateAssigned">Date Assigned</label>
+                            <input type="date" id="editDateAssigned" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editNumPages">Pages</label>
+                            <input type="number" id="editNumPages" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValueAmount">Amount (KSh)</label>
+                            <input type="number" id="editValueAmount" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editStatus">Status</label>
+                            <select id="editStatus" required>
+                                <option value="active">Active</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Save Changes</button>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Setup event listeners for the modal
+            document.querySelector('.close-edit-modal').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            
+            document.getElementById('editWorkCategory').addEventListener('change', (e) => {
+                const employerGroup = document.getElementById('editEmployerNameGroup');
+                if (e.target.value === 'employer') {
+                    employerGroup.style.display = 'block';
+                } else {
+                    employerGroup.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('editOrderForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveEditedOrder();
+            });
+        }
+        
+        // Populate form with order data
+        document.getElementById('editOrderId').value = order.id;
+        document.getElementById('editOrderTitle').value = order.title;
+        document.getElementById('editWorkCategory').value = order.category;
+        document.getElementById('editEmployerName').value = order.employerName || '';
+        document.getElementById('editDateAssigned').value = order.dateAssigned;
+        document.getElementById('editNumPages').value = order.pages;
+        document.getElementById('editValueAmount').value = order.amount;
+        document.getElementById('editStatus').value = order.status;
+        
+        // Show employer field if needed
+        if (order.category === 'employer') {
+            document.getElementById('editEmployerNameGroup').style.display = 'block';
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    saveEditedOrder() {
+        const orderId = document.getElementById('editOrderId').value;
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        const wasPaid = order.payment?.isPaid || false;
+        const previousCategory = order.payment?.expenseCategory || null;
+        
+        // Update order with new values
+        order.title = document.getElementById('editOrderTitle').value;
+        order.category = document.getElementById('editWorkCategory').value;
+        order.employerName = order.category === 'employer' ? 
+            document.getElementById('editEmployerName').value : '';
+        order.dateAssigned = document.getElementById('editDateAssigned').value;
+        order.pages = parseInt(document.getElementById('editNumPages').value);
+        order.amount = parseFloat(document.getElementById('editValueAmount').value);
+        order.status = document.getElementById('editStatus').value;
+        
+        this.saveOrders();
+        document.getElementById('editModal').style.display = 'none';
+        this.renderOrders();
+        this.updateFinancialOverview();
+        
+        // Update financial summary if payment status or category might have been affected
+        if (wasPaid || previousCategory) {
+            this.updateFinancialSummary();
+        }
+        
+        this.showNotification('Order updated successfully!', 'success');
     }
 
     // New method to handle section collapse/expand
@@ -502,6 +639,11 @@ class FreelanceTracker {
             </div>
             <div class="section-total">Total: KSh ${totalAmount.toLocaleString()}</div>
             <div class="export-buttons">
+                <button class="export-btn ${orders.length ? '' : 'disabled'}" 
+                        data-category="${title}" 
+                        data-status="all">
+                    <i class="fas fa-download"></i> All (${orders.length})
+                </button>
                 <button class="export-btn ${statusCounts.active ? '' : 'disabled'}" 
                         data-category="${title}" 
                         data-status="active">
@@ -614,6 +756,9 @@ class FreelanceTracker {
                 <button class="payment-btn" data-order-id="${order.id}">
                     <i class="fas fa-money-bill-wave"></i> Payment
                 </button>
+                <button class="edit-btn" data-order-id="${order.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
                 <button class="delete-btn" data-order-id="${order.id}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -676,6 +821,19 @@ class FreelanceTracker {
     }
 
     getOrdersByCategoryAndStatus(category, status) {
+        if (status === 'all') {
+            if (category === 'Writers Admin') {
+                return this.orders.filter(o => o.category === 'writers-admin');
+            } else if (category === 'Others') {
+                return this.orders.filter(o => o.category === 'others');
+            } else {
+                return this.orders.filter(o => 
+                    o.category === 'employer' && 
+                    o.employerName === category
+                );
+            }
+        }
+        
         if (category === 'Writers Admin') {
             return this.orders.filter(o => 
                 o.category === 'writers-admin' && o.status === status
@@ -832,6 +990,230 @@ class FreelanceTracker {
         });
         input.click();
     }
+
+    analyzeFinances() {
+        // Calculate total income from paid orders
+        const paidOrders = this.orders.filter(order => order.payment?.isPaid);
+        const totalIncome = paidOrders.reduce((sum, order) => sum + order.amount, 0);
+
+        // Calculate category totals
+        const categoryTotals = {};
+        this.paymentCategories.forEach(category => {
+            categoryTotals[category] = paidOrders
+                .filter(order => order.payment.expenseCategory === category)
+                .reduce((sum, order) => sum + order.amount, 0);
+        });
+
+        // Generate monthly data for line chart
+        const monthlyData = this.generateMonthlyData(paidOrders);
+
+        // Generate recommendations
+        const recommendations = this.generateRecommendations(categoryTotals, totalIncome);
+
+        // Show the analysis modal
+        this.showFinancialAnalysis(monthlyData, recommendations, totalIncome);
+    }
+
+    generateMonthlyData(paidOrders) {
+        const monthlyData = {};
+
+        paidOrders.forEach(order => {
+            const date = new Date(order.payment.datePaid);
+            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!monthlyData[monthYear]) {
+                monthlyData[monthYear] = {
+                    income: 0,
+                    expenses: {}
+                };
+                this.paymentCategories.forEach(category => {
+                    monthlyData[monthYear].expenses[category] = 0;
+                });
+            }
+            
+            monthlyData[monthYear].income += order.amount;
+            
+            const category = order.payment.expenseCategory;
+            if (category) {
+                monthlyData[monthYear].expenses[category] += order.amount;
+            }
+        });
+
+        // Sort months chronologically
+        const sortedMonths = Object.keys(monthlyData).sort();
+        
+        // Prepare data for Chart.js
+        const labels = sortedMonths;
+        const incomeData = sortedMonths.map(month => monthlyData[month].income);
+        
+        const expenseDatasets = this.paymentCategories.map(category => {
+            return {
+                label: category.charAt(0).toUpperCase() + category.slice(1),
+                data: sortedMonths.map(month => monthlyData[month].expenses[category]),
+                borderColor: this.getCategoryColor(category),
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                tension: 0.3
+            };
+        });
+
+        return {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: incomeData,
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                },
+                ...expenseDatasets
+            ]
+        };
+    }
+
+    getCategoryColor(category) {
+        const colors = {
+            savings: '#2ecc71',
+            rent: '#e74c3c',
+            wifi: '#3498db',
+            utilities: '#f39c12',
+            shopping: '#9b59b6',
+            other: '#7f8c8d'
+        };
+        return colors[category] || '#95a5a6';
+    }
+
+    generateRecommendations(categoryTotals, totalIncome) {
+        const recommendations = [];
+        
+        // Savings recommendation (ideal: 20% of income)
+        const savingsPct = totalIncome > 0 ? (categoryTotals.savings / totalIncome * 100) : 0;
+        if (savingsPct < 15) {
+            recommendations.push({
+                category: 'savings',
+                message: `Your savings (${savingsPct.toFixed(1)}%) are below the recommended 20%. Try to save more each month.`,
+                type: 'warning'
+            });
+        } else {
+            recommendations.push({
+                category: 'savings',
+                message: `Good job! You're saving ${savingsPct.toFixed(1)}% of your income.`,
+                type: 'good'
+            });
+        }
+
+        // Rent recommendation (ideal: <30% of income)
+        const rentPct = totalIncome > 0 ? (categoryTotals.rent / totalIncome * 100) : 0;
+        if (rentPct > 35) {
+            recommendations.push({
+                category: 'rent',
+                message: `Your rent (${rentPct.toFixed(1)}%) is high compared to your income. Consider more affordable options.`,
+                type: 'warning'
+            });
+        } else if (rentPct > 0) {
+            recommendations.push({
+                category: 'rent',
+                message: `Your rent (${rentPct.toFixed(1)}%) is within reasonable limits.`,
+                type: 'good'
+            });
+        }
+
+        return recommendations;
+    }
+
+    showFinancialAnalysis(chartData, recommendations, totalIncome) {
+        // Create or reuse modal
+        let modal = document.querySelector('.analysis-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'analysis-modal';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="analysis-content">
+                <div class="analysis-header">
+                    <h3><i class="fas fa-chart-line"></i> Financial Analysis</h3>
+                    <button class="close-analysis">&times;</button>
+                </div>
+                <div class="financial-summary">
+                    <div class="summary-item">
+                        <span>Total Income</span>
+                        <strong>KSh ${totalIncome.toLocaleString()}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Total Expenses</span>
+                        <strong>KSh ${Object.values(chartData.datasets.slice(1)).reduce((sum, dataset) => 
+                            sum + dataset.data.reduce((s, v) => s + v, 0), 0).toLocaleString()}</strong>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="financeChart"></canvas>
+                </div>
+                <div class="recommendations">
+                    <h4>Recommendations</h4>
+                    ${recommendations.length > 0 ? 
+                        recommendations.map(rec => `
+                            <div class="recommendation-item ${rec.type}">
+                                <strong>${rec.category.charAt(0).toUpperCase() + rec.category.slice(1)}:</strong>
+                                ${rec.message}
+                            </div>
+                        `).join('') 
+                        : '<div class="recommendation-item good">Your finances look well balanced!</div>'
+                    }
+                </div>
+            </div>
+        `;
+
+        // Show modal
+        modal.classList.add('active');
+
+        // Initialize chart
+        const ctx = modal.querySelector('#financeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: KSh ${context.raw.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'KSh ' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Close modal when clicking X
+        modal.querySelector('.close-analysis').addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
 }
 
 // Initialize tracker
@@ -840,7 +1222,65 @@ document.addEventListener('DOMContentLoaded', () => {
     tracker = new FreelanceTracker();
     
     if (tracker.orders.length === 0 && !localStorage.getItem('freelanceOrders')) {
-        addSampleData();
+        const sampleOrders = [
+            {
+                id: '1',
+                category: 'writers-admin',
+                employerName: '',
+                title: 'Research Paper on Climate Change',
+                dateAssigned: '2024-08-01',
+                pages: 5,
+                amount: 2500,
+                status: 'completed',
+                dateCreated: new Date('2024-08-01').toISOString(),
+                payment: {
+                    isPaid: true,
+                    datePaid: '2024-08-10',
+                    expenseCategory: 'savings',
+                    notes: 'Paid via M-Pesa'
+                }
+            },
+            {
+                id: '2',
+                category: 'employer',
+                employerName: 'Joe Mac',
+                title: 'Website Content Writing',
+                dateAssigned: '2024-08-02',
+                pages: 8,
+                amount: 4000,
+                status: 'submitted',
+                dateCreated: new Date('2024-08-02').toISOString(),
+                payment: {
+                    isPaid: true,
+                    datePaid: '2024-08-12',
+                    expenseCategory: 'rent',
+                    notes: 'Paid via bank transfer'
+                }
+            },
+            {
+                id: '3',
+                category: 'writers-admin',
+                employerName: '',
+                title: 'Essay on Digital Marketing',
+                dateAssigned: '2024-08-03',
+                pages: 3,
+                amount: 1500,
+                status: 'active',
+                dateCreated: new Date('2024-08-03').toISOString(),
+                payment: {
+                    isPaid: false,
+                    datePaid: null,
+                    expenseCategory: null,
+                    notes: null
+                }
+            }
+        ];
+        
+        tracker.orders = sampleOrders;
+        tracker.saveOrders();
+        tracker.updateFinancialOverview();
+        tracker.updateFinancialSummary();
+        tracker.renderOrders();
     }
 
     // Add event listener for the analysis button
@@ -848,395 +1288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tracker.analyzeFinances();
     });
 });
-
-function addSampleData() {
-    const sampleOrders = [
-        {
-            id: '1',
-            category: 'writers-admin',
-            employerName: '',
-            title: 'Research Paper on Climate Change',
-            dateAssigned: '2024-08-01',
-            pages: 5,
-            amount: 2500,
-            status: 'completed',
-            dateCreated: new Date('2024-08-01').toISOString(),
-            payment: {
-                isPaid: true,
-                datePaid: '2024-08-10',
-                expenseCategory: 'savings',
-                notes: 'Paid via M-Pesa'
-            }
-        },
-        {
-            id: '2',
-            category: 'employer',
-            employerName: 'Joe Mac',
-            title: 'Website Content Writing',
-            dateAssigned: '2024-08-02',
-            pages: 8,
-            amount: 4000,
-            status: 'submitted',
-            dateCreated: new Date('2024-08-02').toISOString(),
-            payment: {
-                isPaid: true,
-                datePaid: '2024-08-12',
-                expenseCategory: 'rent',
-                notes: 'Paid via bank transfer'
-            }
-        },
-        {
-            id: '3',
-            category: 'writers-admin',
-            employerName: '',
-            title: 'Essay on Digital Marketing',
-            dateAssigned: '2024-08-03',
-            pages: 3,
-            amount: 1500,
-            status: 'active',
-            dateCreated: new Date('2024-08-03').toISOString(),
-            payment: {
-                isPaid: false,
-                datePaid: null,
-                expenseCategory: null,
-                notes: null
-            }
-        }
-    ];
-    
-    tracker.orders = sampleOrders;
-    tracker.saveOrders();
-    tracker.updateFinancialOverview();
-    tracker.updateFinancialSummary();
-    tracker.renderOrders();
-}
-
-// Add these methods to your FreelanceTracker class
-FreelanceTracker.prototype.analyzeFinances = function() {
-    // Calculate total income from paid orders
-    const paidOrders = this.orders.filter(order => order.payment?.isPaid);
-    const totalIncome = paidOrders.reduce((sum, order) => sum + order.amount, 0);
-
-    // Calculate category totals
-    const categoryTotals = {};
-    this.paymentCategories.forEach(category => {
-        categoryTotals[category] = paidOrders
-            .filter(order => order.payment.expenseCategory === category)
-            .reduce((sum, order) => sum + order.amount, 0);
-    });
-
-    // Generate monthly data for line chart
-    const monthlyData = this.generateMonthlyData(paidOrders);
-
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(categoryTotals, totalIncome);
-
-    // Show the analysis modal
-    this.showFinancialAnalysis(monthlyData, recommendations, totalIncome);
-};
-
-FreelanceTracker.prototype.generateMonthlyData = function(paidOrders) {
-    const monthlyData = {};
-
-    paidOrders.forEach(order => {
-        const date = new Date(order.payment.datePaid);
-        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
-        if (!monthlyData[monthYear]) {
-            monthlyData[monthYear] = {
-                income: 0,
-                expenses: {}
-            };
-            this.paymentCategories.forEach(category => {
-                monthlyData[monthYear].expenses[category] = 0;
-            });
-        }
-        
-        monthlyData[monthYear].income += order.amount;
-        
-        const category = order.payment.expenseCategory;
-        if (category) {
-            monthlyData[monthYear].expenses[category] += order.amount;
-        }
-    });
-
-    // Sort months chronologically
-    const sortedMonths = Object.keys(monthlyData).sort();
-    
-    // Prepare data for Chart.js
-    const labels = sortedMonths;
-    const incomeData = sortedMonths.map(month => monthlyData[month].income);
-    
-    const expenseDatasets = this.paymentCategories.map(category => {
-        return {
-            label: category.charAt(0).toUpperCase() + category.slice(1),
-            data: sortedMonths.map(month => monthlyData[month].expenses[category]),
-            borderColor: this.getCategoryColor(category),
-            backgroundColor: 'rgba(0, 0, 0, 0)',
-            tension: 0.3
-        };
-    });
-
-    return {
-        labels: labels,
-        datasets: [
-            {
-                label: 'Income',
-                data: incomeData,
-                borderColor: '#2ecc71',
-                backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                tension: 0.3,
-                fill: true
-            },
-            ...expenseDatasets
-        ]
-    };
-};
-
-FreelanceTracker.prototype.getCategoryColor = function(category) {
-    const colors = {
-        savings: '#2ecc71',
-        rent: '#e74c3c',
-        wifi: '#3498db',
-        utilities: '#f39c12',
-        shopping: '#9b59b6',
-        other: '#7f8c8d'
-    };
-    return colors[category] || '#95a5a6';
-};
-
-FreelanceTracker.prototype.generateRecommendations = function(categoryTotals, totalIncome) {
-    const recommendations = [];
-    
-    // Savings recommendation (ideal: 20% of income)
-    const savingsPct = totalIncome > 0 ? (categoryTotals.savings / totalIncome * 100) : 0;
-    if (savingsPct < 15) {
-        recommendations.push({
-            category: 'savings',
-            message: `Your savings (${savingsPct.toFixed(1)}%) are below the recommended 20%. Try to save more each month.`,
-            type: 'warning'
-        });
-    } else {
-        recommendations.push({
-            category: 'savings',
-            message: `Good job! You're saving ${savingsPct.toFixed(1)}% of your income.`,
-            type: 'good'
-        });
-    }
-
-    // Rent recommendation (ideal: <30% of income)
-    const rentPct = totalIncome > 0 ? (categoryTotals.rent / totalIncome * 100) : 0;
-    if (rentPct > 35) {
-        recommendations.push({
-            category: 'rent',
-            message: `Your rent (${rentPct.toFixed(1)}%) is high compared to your income. Consider more affordable options.`,
-            type: 'warning'
-        });
-    } else if (rentPct > 0) {
-        recommendations.push({
-            category: 'rent',
-            message: `Your rent (${rentPct.toFixed(1)}%) is within reasonable limits.`,
-            type: 'good'
-        });
-    }
-
-    return recommendations;
-};
-
-// Add to your existing FreelanceTracker class
-FreelanceTracker.prototype.analyzeFinances = function() {
-    // Get all paid orders
-    const paidOrders = this.orders.filter(order => order.payment?.isPaid);
-    
-    // Calculate total income
-    const totalIncome = paidOrders.reduce((sum, order) => sum + order.amount, 0);
-    
-    // Calculate category totals
-    const categoryTotals = {};
-    this.paymentCategories.forEach(category => {
-        categoryTotals[category] = paidOrders
-            .filter(order => order.payment.expenseCategory === category)
-            .reduce((sum, order) => sum + order.amount, 0);
-    });
-
-    // Generate monthly data for the chart
-    const monthlyData = {};
-    paidOrders.forEach(order => {
-        const date = new Date(order.payment.datePaid);
-        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
-        if (!monthlyData[monthYear]) {
-            monthlyData[monthYear] = {
-                income: 0,
-                expenses: {}
-            };
-            this.paymentCategories.forEach(category => {
-                monthlyData[monthYear].expenses[category] = 0;
-            });
-        }
-        
-        monthlyData[monthYear].income += order.amount;
-        
-        const category = order.payment.expenseCategory;
-        if (category) {
-            monthlyData[monthYear].expenses[category] += order.amount;
-        }
-    });
-
-    // Prepare chart data
-    const sortedMonths = Object.keys(monthlyData).sort();
-    const chartData = {
-        labels: sortedMonths,
-        datasets: [
-            {
-                label: 'Income',
-                data: sortedMonths.map(month => monthlyData[month].income),
-                borderColor: '#2ecc71',
-                backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                tension: 0.3,
-                fill: true
-            },
-            ...this.paymentCategories.map(category => ({
-                label: category.charAt(0).toUpperCase() + category.slice(1),
-                data: sortedMonths.map(month => monthlyData[month].expenses[category]),
-                borderColor: this.getCategoryColor(category),
-                backgroundColor: 'rgba(0, 0, 0, 0)',
-                tension: 0.3
-            }))
-        ]
-    };
-
-    // Generate recommendations
-    const recommendations = [];
-    this.paymentCategories.forEach(category => {
-        const percentage = totalIncome > 0 ? (categoryTotals[category] / totalIncome * 100) : 0;
-        
-        if (category === 'savings' && percentage < 15) {
-            recommendations.push({
-                category: category,
-                message: `Your savings (${percentage.toFixed(1)}%) are below the recommended 20%`,
-                type: 'warning'
-            });
-        }
-        else if (category === 'rent' && percentage > 35) {
-            recommendations.push({
-                category: category,
-                message: `Your rent (${percentage.toFixed(1)}%) is high compared to income`,
-                type: 'warning'
-            });
-        }
-    });
-
-    // Show the modal
-    this.showFinancialAnalysis(chartData, recommendations, totalIncome);
-};
-
-FreelanceTracker.prototype.getCategoryColor = function(category) {
-    const colors = {
-        savings: '#2ecc71',
-        rent: '#e74c3c',
-        wifi: '#3498db',
-        utilities: '#f39c12',
-        shopping: '#9b59b6',
-        other: '#7f8c8d'
-    };
-    return colors[category] || '#95a5a6';
-};
-
-FreelanceTracker.prototype.showFinancialAnalysis = function(chartData, recommendations, totalIncome) {
-    // Create or reuse modal
-    let modal = document.querySelector('.analysis-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'analysis-modal';
-        document.body.appendChild(modal);
-    }
-
-    modal.innerHTML = `
-        <div class="analysis-content">
-            <div class="analysis-header">
-                <h3><i class="fas fa-chart-line"></i> Financial Analysis</h3>
-                <button class="close-analysis">&times;</button>
-            </div>
-            <div class="financial-summary">
-                <div class="summary-item">
-                    <span>Total Income</span>
-                    <strong>KSh ${totalIncome.toLocaleString()}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Total Expenses</span>
-                    <strong>KSh ${Object.values(chartData.datasets.slice(1)).reduce((sum, dataset) => 
-                        sum + dataset.data.reduce((s, v) => s + v, 0), 0).toLocaleString()}</strong>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="financeChart"></canvas>
-            </div>
-            <div class="recommendations">
-                <h4>Recommendations</h4>
-                ${recommendations.length > 0 ? 
-                    recommendations.map(rec => `
-                        <div class="recommendation-item ${rec.type}">
-                            <strong>${rec.category.charAt(0).toUpperCase() + rec.category.slice(1)}:</strong>
-                            ${rec.message}
-                        </div>
-                    `).join('') 
-                    : '<div class="recommendation-item good">Your finances look well balanced!</div>'
-                }
-            </div>
-        </div>
-    `;
-
-    // Show modal
-    modal.classList.add('active');
-
-    // Initialize chart
-    const ctx = modal.querySelector('#financeChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: chartData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: KSh ${context.raw.toLocaleString()}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'KSh ' + value.toLocaleString();
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Close modal when clicking X
-    modal.querySelector('.close-analysis').addEventListener('click', () => {
-        modal.classList.remove('active');
-    });
-
-    // Close modal when clicking outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-        }
-    });
-};
-//
-
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -1267,4 +1318,3 @@ if (!document.querySelector('link[href*="font-awesome"]')) {
     faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
     document.head.appendChild(faLink);
 }
-// button for financial analysis
