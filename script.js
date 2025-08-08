@@ -1,4 +1,4 @@
-// Freelance Work Tracker JavaScript
+// Freelance Work Tracker JavaScript with Monthly Tithe Calculator
 class FreelanceTracker {
     constructor() {
         this.orders = this.loadOrders();
@@ -7,7 +7,7 @@ class FreelanceTracker {
         this.savingsGoal = 10000;
         this.targetIncome = this.monthlyExpenses + this.savingsGoal;
         this.currentFilter = 'all';
-        this.paymentCategories = ['savings', 'rent', 'wifi', 'utilities', 'shopping', 'other'];
+        this.paymentCategories = ['savings', 'rent', 'wifi', 'utilities', 'shopping', 'tithe', 'other'];
         this.financialSummary = this.calculateFinancialSummary();
         
         // Track collapsed sections
@@ -21,7 +21,200 @@ class FreelanceTracker {
         this.updateCurrentMonth();
         this.updateFinancialOverview();
         this.updateFinancialSummary();
+        this.updateMonthlyTithe();
         this.renderOrders();
+    }
+
+    // New method to calculate monthly tithe
+    calculateMonthlyTithe() {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        const monthlyPaidAmount = this.orders
+            .filter(order => {
+                if (!order.payment?.isPaid || !order.payment.datePaid) return false;
+                
+                const paymentDate = new Date(order.payment.datePaid);
+                return paymentDate.getMonth() === currentMonth && 
+                       paymentDate.getFullYear() === currentYear;
+            })
+            .reduce((sum, order) => sum + order.amount, 0);
+        
+        const titheAmount = monthlyPaidAmount * 0.10;
+        
+        // Calculate already paid tithe this month
+        const paidTithe = this.orders
+            .filter(order => {
+                if (!order.payment?.isPaid || !order.payment.datePaid) return false;
+                if (order.payment.expenseCategory !== 'tithe') return false;
+                
+                const paymentDate = new Date(order.payment.datePaid);
+                return paymentDate.getMonth() === currentMonth && 
+                       paymentDate.getFullYear() === currentYear;
+            })
+            .reduce((sum, order) => sum + order.amount, 0);
+        
+        const remainingTithe = Math.max(0, titheAmount - paidTithe);
+        
+        return {
+            monthlyIncome: monthlyPaidAmount,
+            recommendedTithe: titheAmount,
+            paidTithe: paidTithe,
+            remainingTithe: remainingTithe,
+            tithePercentage: monthlyPaidAmount > 0 ? (paidTithe / monthlyPaidAmount * 100) : 0
+        };
+    }
+
+    // New method to update monthly tithe display
+    updateMonthlyTithe() {
+        const titheData = this.calculateMonthlyTithe();
+        
+        // Update tithe overview card
+        const titheOverview = document.getElementById('titheOverview');
+        if (titheOverview) {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            const currentMonth = monthNames[new Date().getMonth()];
+            
+            titheOverview.innerHTML = `
+                <div class="tithe-card">
+                    <div class="tithe-header">
+                        <h3><i class="fas fa-hands-praying"></i> ${currentMonth} Tithe</h3>
+                        <div class="tithe-percentage">${titheData.tithePercentage.toFixed(1)}%</div>
+                    </div>
+                    <div class="tithe-details">
+                        <div class="tithe-item">
+                            <span class="label">Monthly Income:</span>
+                            <span class="value">KSh ${titheData.monthlyIncome.toLocaleString()}</span>
+                        </div>
+                        <div class="tithe-item">
+                            <span class="label">Recommended (10%):</span>
+                            <span class="value recommended">KSh ${titheData.recommendedTithe.toLocaleString()}</span>
+                        </div>
+                        <div class="tithe-item">
+                            <span class="label">Already Paid:</span>
+                            <span class="value paid">KSh ${titheData.paidTithe.toLocaleString()}</span>
+                        </div>
+                        <div class="tithe-item ${titheData.remainingTithe > 0 ? 'remaining' : 'complete'}">
+                            <span class="label">Remaining:</span>
+                            <span class="value">KSh ${titheData.remainingTithe.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="tithe-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.min(titheData.tithePercentage / 10 * 100, 100)}%"></div>
+                        </div>
+                        <div class="progress-text">
+                            ${titheData.remainingTithe > 0 ? 
+                                `KSh ${titheData.remainingTithe.toLocaleString()} needed to reach 10%` : 
+                                'Monthly tithe goal achieved! 🙏'}
+                        </div>
+                    </div>
+                    ${titheData.remainingTithe > 0 ? 
+                        `<button class="quick-tithe-btn" onclick="tracker.quickTitheEntry(${titheData.remainingTithe})">
+                            <i class="fas fa-plus"></i> Add Tithe Payment
+                        </button>` : 
+                        '<div class="tithe-complete"><i class="fas fa-check-circle"></i> Tithe Complete</div>'
+                    }
+                </div>
+            `;
+        }
+    }
+
+    // New method for quick tithe entry
+    quickTitheEntry(suggestedAmount) {
+        const modal = this.createQuickTitheModal(suggestedAmount);
+        document.body.appendChild(modal);
+        modal.style.display = 'block';
+    }
+
+    createQuickTitheModal(suggestedAmount) {
+        const modal = document.createElement('div');
+        modal.id = 'quickTitheModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-hands-praying"></i> Record Tithe Payment</h3>
+                    <span class="close-tithe-modal">&times;</span>
+                </div>
+                <form id="quickTitheForm">
+                    <div class="form-group">
+                        <label for="titheTitle">Title</label>
+                        <input type="text" id="titheTitle" value="Monthly Tithe" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="titheAmount">Amount (KSh)</label>
+                        <input type="number" id="titheAmount" min="0" step="0.01" 
+                               value="${suggestedAmount.toFixed(2)}" required>
+                        <small>Suggested amount based on 10% of monthly income</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="titheDate">Date Paid</label>
+                        <input type="date" id="titheDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="titheNotes">Notes (Optional)</label>
+                        <textarea id="titheNotes" rows="3" placeholder="Church name, payment method, etc."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+                        <button type="submit" class="btn">Record Tithe</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Set today's date as default
+        modal.querySelector('#titheDate').valueAsDate = new Date();
+
+        // Setup event listeners
+        modal.querySelector('.close-tithe-modal').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        modal.querySelector('#quickTitheForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveQuickTithe();
+            modal.remove();
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        return modal;
+    }
+
+    saveQuickTithe() {
+        const titheOrder = {
+            id: Date.now().toString(),
+            category: 'others',
+            employerName: '',
+            title: document.getElementById('titheTitle').value,
+            dateAssigned: document.getElementById('titheDate').value,
+            pages: 1, // Default to 1 page for tithe entries
+            amount: parseFloat(document.getElementById('titheAmount').value),
+            status: 'completed', // Tithe payments are always completed
+            dateCreated: new Date().toISOString(),
+            payment: {
+                isPaid: true,
+                datePaid: document.getElementById('titheDate').value,
+                expenseCategory: 'tithe',
+                notes: document.getElementById('titheNotes').value || 'Tithe payment'
+            }
+        };
+
+        this.orders.push(titheOrder);
+        this.saveOrders();
+        this.updateFinancialOverview();
+        this.updateFinancialSummary();
+        this.updateMonthlyTithe();
+        this.renderOrders();
+        this.showNotification('Tithe payment recorded successfully! 🙏', 'success');
     }
 
     setupEventListeners() {
@@ -277,6 +470,7 @@ class FreelanceTracker {
         document.getElementById('editModal').style.display = 'none';
         this.renderOrders();
         this.updateFinancialOverview();
+        this.updateMonthlyTithe(); // Update tithe calculation
         
         // Update financial summary if payment status or category might have been affected
         if (wasPaid || previousCategory) {
@@ -334,6 +528,7 @@ class FreelanceTracker {
             wifi: 0,
             utilities: 0,
             shopping: 0,
+            tithe: 0,
             other: 0,
             totalPaid: 0
         };
@@ -354,6 +549,7 @@ class FreelanceTracker {
     updateFinancialSummary() {
         this.financialSummary = this.calculateFinancialSummary();
         this.renderFinancialSummary();
+        this.updateMonthlyTithe(); // Update tithe when financial summary changes
     }
 
     renderFinancialSummary() {
@@ -490,7 +686,7 @@ class FreelanceTracker {
         document.getElementById('paymentModal').style.display = 'none';
         this.showNotification('Payment details saved!', 'success');
 
-        // Update financial summary if payment status or category changed
+        // Update financial summary and tithe if payment status or category changed
         if (wasPaid !== order.payment.isPaid || previousCategory !== order.payment.expenseCategory) {
             this.updateFinancialSummary();
         }
@@ -532,7 +728,7 @@ class FreelanceTracker {
             this.updateFinancialOverview();
             this.renderOrders();
             
-            // Update financial summary if the deleted order was paid
+            // Update financial summary and tithe if the deleted order was paid
             if (wasPaid) {
                 this.updateFinancialSummary();
             }
@@ -702,10 +898,15 @@ class FreelanceTracker {
             day: 'numeric'
         });
 
-        // Add payment status to order header
-        const paymentStatus = order.payment?.isPaid ? 
-            `<span class="payment-badge paid">Paid - ${order.payment.expenseCategory}</span>` : 
-            `<span class="payment-badge unpaid">Unpaid</span>`;
+        // Add payment status to order header with special styling for tithe
+        let paymentStatus = '';
+        if (order.payment?.isPaid) {
+            const category = order.payment.expenseCategory;
+            const categoryDisplay = category === 'tithe' ? '🙏 Tithe' : category;
+            paymentStatus = `<span class="payment-badge paid ${category}">${categoryDisplay}</span>`;
+        } else {
+            paymentStatus = `<span class="payment-badge unpaid">Unpaid</span>`;
+        }
 
         card.innerHTML = `
             <div class="order-header">
@@ -1079,6 +1280,7 @@ class FreelanceTracker {
             wifi: '#3498db',
             utilities: '#f39c12',
             shopping: '#9b59b6',
+            tithe: '#ff6b6b',
             other: '#7f8c8d'
         };
         return colors[category] || '#95a5a6';
@@ -1086,6 +1288,22 @@ class FreelanceTracker {
 
     generateRecommendations(categoryTotals, totalIncome) {
         const recommendations = [];
+        
+        // Tithe recommendation (ideal: 10% of income)
+        const tithePct = totalIncome > 0 ? (categoryTotals.tithe / totalIncome * 100) : 0;
+        if (tithePct < 10) {
+            recommendations.push({
+                category: 'tithe',
+                message: `Your tithe (${tithePct.toFixed(1)}%) is below the biblical 10%. Consider increasing your tithe commitment.`,
+                type: 'warning'
+            });
+        } else {
+            recommendations.push({
+                category: 'tithe',
+                message: `Blessed giving! You're tithing ${tithePct.toFixed(1)}% of your income. 🙏`,
+                type: 'good'
+            });
+        }
         
         // Savings recommendation (ideal: 20% of income)
         const savingsPct = totalIncome > 0 ? (categoryTotals.savings / totalIncome * 100) : 0;
