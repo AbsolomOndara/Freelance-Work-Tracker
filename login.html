@@ -716,13 +716,14 @@
                 showFieldSuccess('email');
                 showFieldSuccess('password');
                 
-                // Store login session
+                // Store login session with user's full name
                 const sessionData = {
                     user: {
                         id: user.id,
                         firstName: user.firstName,
                         lastName: user.lastName,
-                        email: user.email
+                        email: user.email,
+                        fullName: `${user.firstName} ${user.lastName}`
                     },
                     loginTime: new Date().toISOString(),
                     rememberMe: !!rememberMe
@@ -736,7 +737,7 @@
                 
                 showNotification('Login successful! Redirecting to dashboard...', 'success');
                 
-                // Redirect to tracker
+                // Redirect to tracker (dashboard)
                 setTimeout(() => {
                     window.location.href = 'tracker.html';
                 }, 1500);
