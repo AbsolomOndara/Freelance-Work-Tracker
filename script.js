@@ -1536,3 +1536,30 @@ if (!document.querySelector('link[href*="font-awesome"]')) {
     faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
     document.head.appendChild(faLink);
 }
+// Check if user is logged in (you might use sessionStorage/localStorage)
+document.addEventListener('DOMContentLoaded', function() {
+    // Get the username from where you stored it during login
+    const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+    
+    if (!username) {
+        // If no username found, redirect to login
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Display the username
+    document.getElementById('display-name').textContent = username;
+    
+    // Logout button functionality
+    document.getElementById('logout-btn').addEventListener('click', function() {
+        // Clear user data
+        localStorage.removeItem('username');
+        sessionStorage.removeItem('username');
+        
+        // Redirect to index.html
+        window.location.href = 'index.html';
+    });
+});
+// After successful login
+localStorage.setItem('username', usernameEntered);
+// or sessionStorage.setItem('username', usernameEntered);
